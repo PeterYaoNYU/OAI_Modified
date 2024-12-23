@@ -205,6 +205,7 @@ bool add_mod_rc_slice(int mod_id, size_t slices_len, ran_param_list_t* lst)
 
     nr_pp_impl_param_dl_t *dl = &RC.nrmac[mod_id]->pre_processor_dl;
     NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
+    int ue_idx = 0;
     UE_iterator(UE_info->list, UE) {
       rnti_t rnti = UE->rnti;
       NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
@@ -213,7 +214,9 @@ bool add_mod_rc_slice(int mod_id, size_t slices_len, ran_param_list_t* lst)
         const nr_lc_config_t *c = seq_arr_at(&sched_ctrl->lc_config, l);
         const long lcid = c->lcid;
         LOG_D(NR_MAC, "l %d, lcid %ld, sst %d, sd %d\n", l, lcid, c->nssai.sst, c->nssai.sd);
-        if (nssai_matches(c->nssai, RC_nssai.sst, &RC_nssai.sd)) {
+        // if (nssai_matches(c->nssai, RC_nssai.sst, &RC_nssai.sd)) {
+        // if (i % 2 == ue_idx % 2) {
+        if ((i == 0 && ue_idx == 0) || (i >= 1 && ue_idx >=1)) {
           const rrc_gNB_ue_context_t* rrc_ue_context_list = rrc_gNB_get_ue_context_by_rnti_any_du(RC.nrrrc[mod_id], rnti);
           const uint16_t UE_mcc = rrc_ue_context_list->ue_context.ue_guami.mcc;
           const uint16_t UE_mnc = rrc_ue_context_list->ue_context.ue_guami.mnc;
@@ -223,15 +226,17 @@ bool add_mod_rc_slice(int mod_id, size_t slices_len, ran_param_list_t* lst)
           LOG_D(NR_MAC, "UE: mcc %d mnc %d, sst %d sd %d, RC: mcc %d mnc %d, sst %d sd %d\n",
                 UE_mcc, UE_mnc, UE_sst, UE_sd, RC_mcc, RC_mnc, RC_nssai.sst, RC_nssai.sd);
 
-          if (UE_mcc == RC_mcc && UE_mnc == RC_mnc && UE_sst == RC_nssai.sst && UE_sd == RC_nssai.sd) {
-            dl->add_UE(dl->slices, UE);
-            assoc_ue = true;
-          } else {
-            LOG_E(NR_MAC, "Failed adding UE (PLMN: mcc %d mnc %d, NSSAI: sst %d sd %d) to slice (PLMN: mcc %d mnc %d, NSSAI: sst %d sd %d)\n",
-                  UE_mcc, UE_mnc, UE_sst, UE_sd, RC_mcc, RC_mnc, RC_nssai.sst, RC_nssai.sd);
-          }
+          // if (UE_mcc == RC_mcc && UE_mnc == RC_mnc && UE_sst == RC_nssai.sst && UE_sd == RC_nssai.sd) {
+          dl->add_UE(dl->slices, UE);
+          assoc_ue = true;
+          LOG_I(NR_MAC, "adding UE with RNTI%x to slice with sst: %d, sd: %d \n", rnti, RC_nssai.sst, RC_nssai.sd);
+          // } else {
+          //   LOG_E(NR_MAC, "Failed adding UE (PLMN: mcc %d mnc %d, NSSAI: sst %d sd %d) to slice (PLMN: mcc %d mnc %d, NSSAI: sst %d sd %d)\n",
+          //         UE_mcc, UE_mnc, UE_sst, UE_sd, RC_mcc, RC_mnc, RC_nssai.sst, RC_nssai.sd);
+          // }
         }
       }
+      ue_idx++;
       if (!assoc_ue)
         LOG_E(NR_MAC, "Failed matching UE rnti %x with current slice (sst %d, sd %d), might lost user plane data\n", rnti, RC_nssai.sst, RC_nssai.sd);
     }
